@@ -5,37 +5,30 @@ import '../mocks/module_mock.dart';
 
 void main() {
   group('$ModulesContainer', () {
+    final config = ApplicationConfig(
+        host: 'localhost',
+        port: 3000,
+        serverAdapter: SerinusHttpAdapter(
+          host: 'localhost',
+          port: 3000,
+          poweredByHeader: 'Serinus',
+        ),
+        poweredByHeader: 'Serinus');
     test(
         'when the function "registerModules" is called, then it should add a module to the container',
         () async {
-      final container = ModulesContainer(ApplicationConfig(
-          host: 'localhost',
-          port: 3000,
-          serverAdapter: SerinusHttpAdapter(
-            host: 'localhost',
-            port: 3000,
-            poweredByHeader: 'Serinus',
-          ),
-          poweredByHeader: 'Serinus'));
+      final container = ModulesContainer();
       final module = SimpleModule();
-      await container.registerModules(module, module.runtimeType);
+      await container.registerModules(module, module.runtimeType, config);
       expect(container.modules.length, 1);
     });
 
     test(
         'when the function "registerModule" is called with a module with a provider, then the $ModulesContainer should create a ModuleInjectables with the provider',
         () async {
-      final container = ModulesContainer(ApplicationConfig(
-          host: 'localhost',
-          port: 3000,
-          serverAdapter: SerinusHttpAdapter(
-            host: 'localhost',
-            port: 3000,
-            poweredByHeader: 'Serinus',
-          ),
-          poweredByHeader: 'Serinus'));
+      final container = ModulesContainer();
       final module = SimpleModuleWithProvider();
-      await container.registerModules(module, module.runtimeType);
+      await container.registerModules(module, module.runtimeType, config);
       expect(container.modules.length, 1);
       expect(
           container
@@ -48,17 +41,9 @@ void main() {
     test(
         'when the function "registerModule" is called with a module with injectables, then the $ModulesContainer should create a ModuleInjectables with all the injectables',
         () async {
-      final container = ModulesContainer(ApplicationConfig(
-          host: 'localhost',
-          port: 3000,
-          serverAdapter: SerinusHttpAdapter(
-            host: 'localhost',
-            port: 3000,
-            poweredByHeader: 'Serinus',
-          ),
-          poweredByHeader: 'Serinus'));
+      final container = ModulesContainer();
       final module = SimpleModuleWithInjectables();
-      await container.registerModules(module, module.runtimeType);
+      await container.registerModules(module, module.runtimeType, config);
       expect(container.modules.length, 1);
       final injectables =
           container.getModuleInjectablesByToken(module.runtimeType.toString());
@@ -71,18 +56,10 @@ void main() {
       then the $ModulesContainer should create two $ModuleInjectables which for the main module contains all its own injectables and the providers from the imported module,\n
       and for the imported module contains only its own provider and an intersection from its own injectables and the injectables from the main module
       ''', () async {
-      final container = ModulesContainer(ApplicationConfig(
-          host: 'localhost',
-          port: 3000,
-          serverAdapter: SerinusHttpAdapter(
-            host: 'localhost',
-            port: 3000,
-            poweredByHeader: 'Serinus',
-          ),
-          poweredByHeader: 'Serinus'));
+      final container = ModulesContainer();
       final module = SimpleModuleWithImportsAndInjects();
-      await container.registerModules(module, module.runtimeType);
-      await container.finalize(module);
+      await container.registerModules(module, module.runtimeType, config);
+      await container.finalize(module, config);
       expect(container.modules.length, 3);
       final injectables =
           container.getModuleInjectablesByToken(module.runtimeType.toString());

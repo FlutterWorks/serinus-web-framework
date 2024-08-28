@@ -42,11 +42,8 @@ final class ModulesContainer {
   /// The [isInitialized] property contains the initialization status of the application
   bool get isInitialized => _isInitialized;
 
-  /// The config of the application
-  final ApplicationConfig config;
-
   /// The constructor of the [ModulesContainer] class
-  ModulesContainer(this.config);
+  ModulesContainer();
 
   /// The [moduleToken] method is used to get the token of a module
   String moduleToken(Module module) =>
@@ -60,17 +57,20 @@ final class ModulesContainer {
   /// The method registers the module in the application and initializes
   /// all the "eager" providers of the module and saves them in the [_providers]
   /// map. It also saves the deferred providers in the [_deferredProviders] map.
-  Future<void> registerModule(Module module, Type entrypoint,
+  Future<void> registerModule(
+      Module module, Type entrypoint, ApplicationConfig config,
       [ModuleInjectables? moduleInjectables]) async {
     final token = moduleToken(module);
-    final initializedModule = _modules[token] = await module.registerAsync(config);
+    final initializedModule =
+        _modules[token] = await module.registerAsync(config);
     if (initializedModule.runtimeType == entrypoint &&
         initializedModule.exports.isNotEmpty) {
       throw InitializationError('The entrypoint module cannot have exports');
     }
     _providers[token] = [];
     if (_moduleInjectables.containsKey(token)) {
-      _moduleInjectables[token] = moduleInjectables!.concatTo(_moduleInjectables[token]);
+      _moduleInjectables[token] =
+          moduleInjectables!.concatTo(_moduleInjectables[token]);
     } else {
       final newInjectables = ModuleInjectables(
         middlewares: {...module.middlewares},
@@ -102,7 +102,8 @@ final class ModulesContainer {
   /// The method returns the application context with the providers to inject
   ///
   /// Throws a [StateError] if the provider is not found in the application providers
-  ApplicationContext _getApplicationContext(List<Type> providersToInject) {
+  ApplicationContext _getApplicationContext(
+      List<Type> providersToInject, ApplicationConfig config) {
     final usableProviders = <Provider>[];
     final globalTypes = globalProviders.map((e) => e.runtimeType);
     for (final provider in providersToInject) {
@@ -135,7 +136,8 @@ final class ModulesContainer {
   /// from the entrypoint module. It also registers all the submodules.
   ///
   /// It first initialize the "eager" submodules and then the deferred submodules.
-  Future<void> registerModules(Module module, Type entrypoint,
+  Future<void> registerModules(
+      Module module, Type entrypoint, ApplicationConfig config,
       [ModuleInjectables? moduleInjectables]) async {
     _isInitialized = true;
     final splittedModules = module.imports.splitBy<DeferredModule>();
@@ -146,7 +148,12 @@ final class ModulesContainer {
     );
     for (var subModule in splittedModules.notOfType) {
       await _callForRecursiveRegistration(
-          subModule, module, entrypoint, currentModuleInjectables);
+        subModule,
+        module,
+        entrypoint,
+        config,
+        currentModuleInjectables,
+      );
       final subModuleToken = moduleToken(subModule);
       if (_moduleInjectables.containsKey(subModuleToken)) {
         _moduleInjectables[subModuleToken] = currentModuleInjectables
@@ -155,9 +162,9 @@ final class ModulesContainer {
     }
     for (var deferredModule in splittedModules.ofType) {
       final subModule = await deferredModule
-          .init(_getApplicationContext(deferredModule.inject));
+          .init(_getApplicationContext(deferredModule.inject, config));
       await _callForRecursiveRegistration(
-          subModule, module, entrypoint, currentModuleInjectables);
+          subModule, module, entrypoint, config, currentModuleInjectables);
       final subModuleToken = moduleToken(subModule);
       if (_moduleInjectables.containsKey(subModuleToken)) {
         _moduleInjectables[subModuleToken] = currentModuleInjectables
@@ -166,7 +173,7 @@ final class ModulesContainer {
       module.imports.remove(deferredModule);
       module.imports.add(subModule);
     }
-    await registerModule(module, entrypoint, _moduleInjectables[token]);
+    await registerModule(module, entrypoint, config, _moduleInjectables[token]);
   }
 
   /// Calls the recursive registration of the submodules
@@ -178,23 +185,27 @@ final class ModulesContainer {
   /// The method calls the recursive registration of the submodules
   ///
   /// Throws a [StateError] if a module tries to import itself
-  Future<void> _callForRecursiveRegistration(Module subModule, Module module,
-      Type entrypoint, ModuleInjectables moduleInjectables) async {
+  Future<void> _callForRecursiveRegistration(
+      Module subModule,
+      Module module,
+      Type entrypoint,
+      ApplicationConfig config,
+      ModuleInjectables moduleInjectables) async {
     if (subModule.runtimeType == module.runtimeType) {
       throw InitializationError('A module cannot import itself');
     }
 
-    await registerModules(subModule, entrypoint, moduleInjectables);
+    await registerModules(subModule, entrypoint, config, moduleInjectables);
   }
 
   /// Finalizes the registration of the deferred providers
-  Future<void> finalize(Module entrypoint) async {
+  Future<void> finalize(Module entrypoint, ApplicationConfig config) async {
     for (final entry in _deferredProviders.entries) {
       final token = entry.key;
       final providers = entry.value;
       final parentModule = getModuleByToken(token);
       for (final provider in [...providers]) {
-        final context = _getApplicationContext(provider.inject);
+        final context = _getApplicationContext(provider.inject, config);
         final initializedProvider = await provider.init(context);
         await initIfUnregistered(initializedProvider);
         if (initializedProvider.isGlobal) {

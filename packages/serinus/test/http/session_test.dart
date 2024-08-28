@@ -43,10 +43,10 @@ Future<void> main() async {
   group('$Session', () {
     SerinusApplication? app;
     setUpAll(() async {
-      app = await serinus.createApplication(
+      app = (await serinus.createApplication(
           entrypoint: TestModule(controllers: [TestController()]),
           loggingLevel: LogLevel.none,
-          port: 3006);
+          port: 3006)) as SerinusApplication;
       await app?.serve();
     });
     tearDownAll(() async {

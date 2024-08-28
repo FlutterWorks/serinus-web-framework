@@ -181,7 +181,7 @@ class SwaggerModule {
             .replaceAll('{{endpoint}}', endpoint.replaceAll('/', '')));
     _swaggerUiModule = SwaggerUiModule(endpoint, swaggerHtml());
     await app.modulesContainer.registerModules(
-        _swaggerUiModule!, app.modulesContainer.modules.last.runtimeType);
+        _swaggerUiModule!, app.modulesContainer.modules.last.runtimeType, app.config);
   }
 
   /// The [normalizePath] method is used to normalize the path.

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:meta/meta.dart';
 
@@ -18,9 +19,13 @@ import '../mixins/mixins.dart';
 import '../services/logger_service.dart';
 import '../versioning.dart';
 import 'core.dart';
+import 'worker.dart';
 
 /// The [Application] class is used to create an application.
 sealed class Application {
+  /// The [logger] property contains the logger of the application.
+  final Logger logger = Logger('Application');
+
   /// The [level] property contains the log level of the application.
   final LogLevel level;
 
@@ -49,7 +54,7 @@ sealed class Application {
     LoggerService? loggerService,
   })  : router = router ?? Router(),
         loggerService = loggerService ?? LoggerService(level: level),
-        modulesContainer = modulesContainer ?? ModulesContainer(config);
+        modulesContainer = modulesContainer ?? ModulesContainer();
 
   /// The [url] property contains the URL of the application.
   String get url;
@@ -58,7 +63,7 @@ sealed class Application {
   HttpServer get server => config.serverAdapter.server;
 
   /// The [adapter] property contains the adapter of the application.
-  SerinusHttpAdapter get adapter => config.serverAdapter as SerinusHttpAdapter;
+  HttpAdapter get adapter => config.serverAdapter as HttpAdapter;
 
   /// The [enableShutdownHooks] method is used to enable the shutdown hooks.
   void enableShutdownHooks() {
@@ -91,7 +96,8 @@ sealed class Application {
 
 /// The [SerinusApplication] class is used to create a new instance of the [Application] class.
 class SerinusApplication extends Application {
-  final Logger _logger = Logger('SerinusApplication');
+  /// The [isChild] property returns true if the application is contained in a Worker of a [OrchestratorApplication].
+  final bool isChild;
 
   /// The [SerinusApplication] constructor is used to create a new instance of the [SerinusApplication] class.
   SerinusApplication({
@@ -99,6 +105,9 @@ class SerinusApplication extends Application {
     required super.config,
     super.level,
     super.loggerService,
+    super.modulesContainer,
+    super.router,
+    this.isChild = false,
   });
 
   @override
@@ -124,7 +133,7 @@ class SerinusApplication extends Application {
   @override
   Future<void> serve() async {
     await initialize();
-    _logger.info('Starting server on $url');
+    logger.info('Starting server on $url');
     final requestHandler = RequestHandler(router, modulesContainer, config);
     final wsHandler = WebSocketHandler(router, modulesContainer, config);
     Future<void> Function(InternalRequest, InternalResponse) handler;
@@ -143,10 +152,10 @@ class SerinusApplication extends Application {
           }
           return handler(request, response);
         },
-        errorHandler: (e, stackTrace) => _logger.severe(e, stackTrace),
+        errorHandler: (e, stackTrace) => logger.severe(e, stackTrace),
       );
     } on SocketException catch (e) {
-      _logger.severe('Failed to start server on ${e.address}:${e.port}');
+      logger.severe('Failed to start server on ${e.address}:${e.port}');
       await close();
     }
   }
@@ -162,22 +171,28 @@ class SerinusApplication extends Application {
 
   @override
   Future<void> initialize() async {
+    if (isChild) {
+      return;
+    }
     if (entrypoint is DeferredModule) {
       throw InitializationError(
           'The entry point of the application cannot be a DeferredModule');
     }
     if (!modulesContainer.isInitialized) {
       await modulesContainer.registerModules(
-          entrypoint, entrypoint.runtimeType);
+          entrypoint, entrypoint.runtimeType, config);
     }
     final explorer = Explorer(modulesContainer, router, config);
     explorer.resolveRoutes();
-    await modulesContainer.finalize(entrypoint);
+    await modulesContainer.finalize(entrypoint, config);
   }
 
   @override
   Future<void> shutdown() async {
-    _logger.info('Shutting down server');
+    if (isChild) {
+      return;
+    }
+    logger.info('Shutting down server');
     final registeredProviders =
         modulesContainer.modules.map((e) => e.providers).flatten();
     for (final provider in registeredProviders) {
@@ -189,19 +204,143 @@ class SerinusApplication extends Application {
 
   @override
   Future<void> register() async {
-    await modulesContainer.registerModules(entrypoint, entrypoint.runtimeType);
+    if (isChild) {
+      return;
+    }
+    await modulesContainer.registerModules(
+        entrypoint, entrypoint.runtimeType, config);
   }
 
   /// The [use] method is used to add a hook to the application.
   void use(Hook hook) {
     config.addHook(hook);
-    _logger.info('Hook ${hook.runtimeType} added to application');
+    logger.info('Hook ${hook.runtimeType} added to application');
   }
 
   /// The [trace] method is used to add a tracer to the application.
   void trace(Tracer tracer) {
     config.registerTracer(tracer);
-    _logger.info(
+    logger.info(
         'Tracer ${tracer.name}(${tracer.runtimeType}) added to application');
+  }
+}
+
+/// The [OrchestratorApplication] class is used to create a new instance of the [Application] class.
+///
+/// The [OrchestratorApplication] class is used to create an application that can spawn multiple workers.
+///
+/// A [Worker] is a [Isolate] that runs a [SerinusApplication].
+class OrchestratorApplication extends Application {
+  /// The [instances] property contains the number of instances of the application.
+  final int instances;
+
+  /// The [workers] property contains the workers of the application.
+  final Map<int, Worker> workers = {};
+
+  /// The [OrchestratorApplication] constructor is used to create a new instance of the [OrchestratorApplication] class.
+  OrchestratorApplication({
+    required super.entrypoint,
+    required super.config,
+    super.level,
+    super.router,
+    super.modulesContainer,
+    super.loggerService,
+    this.instances = 1,
+  });
+
+  @override
+  String get url => config.baseUrl;
+
+  @override
+  Future<void> initialize() async {
+    if (entrypoint is DeferredModule) {
+      throw InitializationError(
+          'The entry point of the application cannot be a DeferredModule');
+    }
+    if (!modulesContainer.isInitialized) {
+      await modulesContainer.registerModules(
+          entrypoint, entrypoint.runtimeType, config);
+    }
+    final explorer = Explorer(modulesContainer, router, config);
+    explorer.resolveRoutes();
+    await modulesContainer.finalize(entrypoint, config);
+    for (int i = 0; i < instances; i++) {
+      workers[i] = await Worker.spawn(i, entrypoint, modulesContainer, router,
+          config, level, loggerService!, (dynamic message) {
+        if (message == WorkerMessage.closed) {
+          workers.remove(i);
+          logger.info('Worker #$i closed');
+        }
+        if (message == WorkerMessage.shutdown) {
+          workers.remove(i);
+          logger.info('Worker #$i shutdown');
+        }
+        if (message == WorkerMessage.listening) {
+          logger.info('Worker #$i listening');
+        }
+      });
+    }
+  }
+
+  @override
+  Future<void> shutdown() async {
+    final registeredProviders =
+        modulesContainer.modules.map((e) => e.providers).flatten();
+    for (final provider in registeredProviders) {
+      if (provider is OnApplicationShutdown) {
+        await provider.onApplicationShutdown();
+      }
+    }
+  }
+
+  @override
+  Future<void> register() async {
+    await modulesContainer.registerModules(
+        entrypoint, entrypoint.runtimeType, config);
+  }
+
+  @override
+  Future<void> serve() async {
+    await initialize();
+    final requestHandler = RequestHandler(router, modulesContainer, config);
+    final wsHandler = WebSocketHandler(router, modulesContainer, config);
+    Future<void> Function(InternalRequest, InternalResponse) handler;
+    try {
+      for (final application in workers.entries) {
+        application.value.commands.send('listen');
+      }
+      for (final adapter in config.adapters.values) {
+        if (adapter.shouldBeInitilized) {
+          await adapter.init(modulesContainer, config);
+        }
+      }
+      adapter.listen(
+        (request, response) {
+          handler = requestHandler.handle;
+          if (config.adapters[WsAdapter] != null &&
+              config.adapters[WsAdapter]?.canHandle(request) == true) {
+            handler = wsHandler.handle;
+          }
+          return handler(request, response);
+        },
+        errorHandler: (e, stackTrace) => logger.error(e, stackTrace),
+      );
+    } on SocketException catch (e) {
+      logger.severe('Failed to start server on ${e.address}:${e.port}');
+      await close();
+    }
+  }
+
+  @override
+  Future<void> close() async {
+    for (final adapter in config.adapters.values) {
+      await adapter.close();
+    }
+    await config.serverAdapter.close();
+    for (final worker in workers.entries) {
+      worker.value.commands.send('close');
+      logger.info('Closing worker #${worker.key}');
+    }
+    await shutdown();
   }
 }

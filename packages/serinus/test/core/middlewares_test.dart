@@ -70,10 +70,10 @@ void main() {
   group('$Middleware', () {
     SerinusApplication? app;
     setUpAll(() async {
-      app = await serinus.createApplication(
+      app = (await serinus.createApplication(
           entrypoint: TestModule(controllers: [TestController()]),
           port: 3003,
-          loggingLevel: LogLevel.none);
+          loggingLevel: LogLevel.none)) as SerinusApplication;
       await app?.serve();
     });
     tearDownAll(() async {

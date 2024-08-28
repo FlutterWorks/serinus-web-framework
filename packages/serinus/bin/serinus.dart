@@ -86,7 +86,7 @@ class TestProviderTwo extends Provider
 
   @override
   Future<void> onApplicationInit() async {
-    print('Provider two initialized');
+    // print('Provider two initialized');
   }
 
   @override
@@ -117,9 +117,12 @@ class PostRoute extends Route {
 
 class HomeController extends Controller {
   HomeController({super.path = '/'}) {
-    on(GetRoute(path: '/'), (context) async {
-      return 'Hello world';
-    },);
+    on(
+      GetRoute(path: '/'),
+      (context) async {
+        return 'Hello world';
+      },
+    );
     on(PostRoute(path: '/*'), (context) async {
       return '${context.request.getData('test')} ${context.params}';
     },
@@ -292,9 +295,10 @@ class TestProviderThree extends Provider {
 }
 
 void main(List<String> arguments) async {
-  SerinusApplication application = await serinus.createApplication(
-      entrypoint: AppModule(), host: InternetAddress.anyIPv4.address);
+  Application application = await serinus.createApplication(
+      entrypoint: AppModule(),
+      host: InternetAddress.anyIPv4.address,
+      instances: 12);
   application.enableShutdownHooks();
-  // application.trace(ServerTimingTracer());
   await application.serve();
 }

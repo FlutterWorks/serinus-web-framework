@@ -42,20 +42,23 @@ void main() async {
           then it should be gettable from the container
         ''', () async {
       final provider = TestProvider();
-      final container = ModulesContainer(config);
+      final container = ModulesContainer();
 
-      await container.registerModules(TestModule(providers: [provider]), Type);
+      await container.registerModules(
+          TestModule(providers: [provider]), Type, config);
       expect(container.get<TestProvider>(), provider);
     });
 
     test('''when a $Provider is registered in the application two times, 
           then it should throw a $InitializationError
         ''', () async {
-      final container = ModulesContainer(config);
+      final container = ModulesContainer();
 
       container
           .registerModule(
-              TestModule(providers: [TestProvider(), TestProvider()]), Type)
+              TestModule(providers: [TestProvider(), TestProvider()]),
+              Type,
+              config)
           .catchError((e) => expect(e.runtimeType, InitializationError));
     });
 
@@ -64,13 +67,13 @@ void main() async {
         and the 'finalize' method has been called,
         then the initialized $Provider should be gettable''', () async {
       final provider = TestProvider();
-      final container = ModulesContainer(config);
+      final container = ModulesContainer();
       final module = TestModule(providers: [
         DeferredProvider((context) async => provider, inject: [])
       ]);
-      await container.registerModules(module, Type);
+      await container.registerModules(module, Type, config);
 
-      await container.finalize(module);
+      await container.finalize(module, config);
       expect(container.get<TestProvider>(), provider);
     });
 
@@ -79,13 +82,14 @@ void main() async {
         and the 'finalize' method has not been called,
         then the initialized $Provider should not be gettable''', () async {
       final provider = TestProvider();
-      final container = ModulesContainer(config);
+      final container = ModulesContainer();
 
       await container.registerModules(
           TestModule(providers: [
             DeferredProvider((context) async => provider, inject: [])
           ]),
-          Type);
+          Type,
+          config);
 
       expect(container.get<TestProvider>(), isNull);
     });
@@ -94,7 +98,7 @@ void main() async {
         '''when a $DeferredProvider with dependencies is registered in the application through a $Module,
         and the dipendency is in the scoped context,
         then the initialized $Provider should be gettable''', () async {
-      final container = ModulesContainer(config);
+      final container = ModulesContainer();
       final module = TestModule(providers: [
         TestProvider(),
         DeferredProvider((context) async {
@@ -102,9 +106,9 @@ void main() async {
           return TestProviderDependent(dep);
         }, inject: [TestProvider])
       ]);
-      await container.registerModules(module, Type);
+      await container.registerModules(module, Type, config);
 
-      await container.finalize(module);
+      await container.finalize(module, config);
 
       expect(container.get<TestProviderDependent>(), isNotNull);
     });
@@ -113,27 +117,27 @@ void main() async {
         '''when a $DeferredProvider with dependencies is registered in the application through a $Module,
         and the dipendency is not in the scoped context,
         then the initialized $Provider should not be gettable''', () async {
-      final container = ModulesContainer(config);
+      final container = ModulesContainer();
       final module = TestModule(providers: [
         DeferredProvider((context) async {
           final dep = context.use<TestProvider>();
           return TestProviderDependent(dep);
         }, inject: [TestProvider])
       ]);
-      await container.registerModules(module, Type);
+      await container.registerModules(module, Type, config);
 
       container
-          .finalize(module)
+          .finalize(module, config)
           .catchError((value) => expect(value.runtimeType, StateError));
     });
 
     test('''when a $Provider has $OnApplicationInit mixin,
         then the onApplicationInit method should be called''', () async {
       final provider = TestProviderOnInit();
-      final container = ModulesContainer(config);
+      final container = ModulesContainer();
       final module = TestModule(providers: [provider]);
-      await container.registerModules(module, Type);
-      await container.finalize(module);
+      await container.registerModules(module, Type, config);
+      await container.finalize(module, config);
       expect(provider.isInitialized, true);
     });
   });

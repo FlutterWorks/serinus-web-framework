@@ -56,11 +56,11 @@ void main() async {
     final controller = TestController();
     final middleware = TestMiddleware();
     setUpAll(() async {
-      app = await serinus.createApplication(
+      app = (await serinus.createApplication(
           port: 3100,
           entrypoint:
               TestModule(controllers: [controller], middlewares: [middleware]),
-          loggingLevel: LogLevel.none);
+          loggingLevel: LogLevel.none)) as SerinusApplication;
       app?.useViewEngine(ViewEngineTest());
       await app?.serve();
     });

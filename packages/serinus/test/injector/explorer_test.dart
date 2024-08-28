@@ -23,9 +23,11 @@ void main() {
         'when the application startup, then the controller can be walked through to register all the routes',
         () async {
       final router = Router();
-      final modulesContainer = ModulesContainer(config);
+      final modulesContainer = ModulesContainer();
       await modulesContainer.registerModule(
-          SimpleMockModule(controllers: [MockController()]), SimpleMockModule);
+          SimpleMockModule(controllers: [MockController()]),
+          SimpleMockModule,
+          config);
       final explorer = Explorer(modulesContainer, router, config);
       explorer.resolveRoutes();
     });
@@ -34,10 +36,11 @@ void main() {
         'when the application startup, and a controller has not a static path, then the explorer will throw an error',
         () async {
       final router = Router();
-      final modulesContainer = ModulesContainer(config);
+      final modulesContainer = ModulesContainer();
       await modulesContainer.registerModule(
           SimpleMockModule(controllers: [MockControllerWithWrongPath()]),
-          SimpleMockModule);
+          SimpleMockModule,
+          config);
       final explorer = Explorer(modulesContainer, router, config);
       expect(() => explorer.resolveRoutes(), throwsException);
     });
@@ -45,7 +48,7 @@ void main() {
     test(
         'when a path without leading slash is passed, then the path will be normalized',
         () {
-      final explorer = Explorer(ModulesContainer(config), Router(), config);
+      final explorer = Explorer(ModulesContainer(), Router(), config);
       final path = 'test';
       final normalizedPath = explorer.normalizePath(path);
       expect(normalizedPath, '/test');
@@ -54,7 +57,7 @@ void main() {
     test(
         'when a path with multiple slashes is passed, then the path will be normalized',
         () {
-      final explorer = Explorer(ModulesContainer(config), Router(), config);
+      final explorer = Explorer(ModulesContainer(), Router(), config);
       final path = '/test//test';
       final normalizedPath = explorer.normalizePath(path);
       expect(normalizedPath, '/test/test');
@@ -66,9 +69,11 @@ void main() {
       config.versioningOptions =
           VersioningOptions(type: VersioningType.uri, version: 1);
       final router = Router();
-      final modulesContainer = ModulesContainer(config);
+      final modulesContainer = ModulesContainer();
       await modulesContainer.registerModule(
-          SimpleMockModule(controllers: [MockController()]), SimpleMockModule);
+          SimpleMockModule(controllers: [MockController()]),
+          SimpleMockModule,
+          config);
       final explorer = Explorer(modulesContainer, router, config);
       explorer.resolveRoutes();
       final result = router.getRouteByPathAndMethod('/v1', HttpMethod.get);
@@ -90,9 +95,11 @@ void main() {
           ));
       config.globalPrefix = GlobalPrefix(prefix: 'api');
       final router = Router();
-      final modulesContainer = ModulesContainer(config);
+      final modulesContainer = ModulesContainer();
       await modulesContainer.registerModule(
-          SimpleMockModule(controllers: [MockController()]), SimpleMockModule);
+          SimpleMockModule(controllers: [MockController()]),
+          SimpleMockModule,
+          config);
       final explorer = Explorer(modulesContainer, router, config);
       explorer.resolveRoutes();
       final result = router.getRouteByPathAndMethod('/api', HttpMethod.get);
@@ -116,9 +123,11 @@ void main() {
       config.versioningOptions =
           VersioningOptions(type: VersioningType.uri, version: 1);
       final router = Router();
-      final modulesContainer = ModulesContainer(config);
+      final modulesContainer = ModulesContainer();
       await modulesContainer.registerModule(
-          SimpleMockModule(controllers: [MockController()]), SimpleMockModule);
+          SimpleMockModule(controllers: [MockController()]),
+          SimpleMockModule,
+          config);
       final explorer = Explorer(modulesContainer, router, config);
       explorer.resolveRoutes();
       final result = router.getRouteByPathAndMethod('/api/v1', HttpMethod.get);

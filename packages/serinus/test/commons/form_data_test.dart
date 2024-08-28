@@ -49,9 +49,9 @@ void main() async {
     group('Multipart', () {
       SerinusApplication? app;
       setUpAll(() async {
-        app = await serinus.createApplication(
+        app = (await serinus.createApplication(
             entrypoint: TestModule(controllers: [TestController()]),
-            loggingLevel: LogLevel.none);
+            loggingLevel: LogLevel.none)) as SerinusApplication;
         await app?.serve();
       });
       tearDownAll(() async => await app?.close());

@@ -33,11 +33,11 @@ void main() async {
     test('''when a $Module is registered in the application, 
           then all the submodules should be registered as well
         ''', () async {
-      final container = ModulesContainer(config);
+      final container = ModulesContainer();
       final module = TestModule(imports: [TestSubModule()]);
-      await container.registerModules(module, Type);
+      await container.registerModules(module, Type, config);
 
-      await container.finalize(module);
+      await container.finalize(module, config);
 
       expect(container.modules.length, 2);
     });
@@ -47,7 +47,7 @@ void main() async {
           and has exports, 
           then it should throw a $InitializationError
         ''', () async {
-      final container = ModulesContainer(config);
+      final container = ModulesContainer();
 
       container
           .registerModules(
@@ -55,7 +55,8 @@ void main() async {
                   imports: [TestSubModule()],
                   providers: [TestProviderExported()],
                   exports: [TestProviderExported]),
-              TestModule)
+              TestModule,
+              config)
           .catchError(
               (value) => expect(value.runtimeType, InitializationError));
     });
@@ -64,14 +65,15 @@ void main() async {
           and it imports itself,
           then it should throw a $InitializationError
         ''', () async {
-      final container = ModulesContainer(config);
+      final container = ModulesContainer();
 
       container
           .registerModules(
               TestModule(
                 imports: [TestModule()],
               ),
-              TestModule)
+              TestModule,
+              config)
           .catchError(
               (value) => expect(value.runtimeType, InitializationError));
     });
@@ -80,15 +82,15 @@ void main() async {
           and it exports a provider that is not registered in the module,
           then it should throw a $InitializationError
         ''', () async {
-      final container = ModulesContainer(config);
+      final container = ModulesContainer();
       final entrypoint = TestModule(
         imports: [
           TestSubModule(exports: [TestProviderExported])
         ],
       );
-      await container.registerModules(entrypoint, TestModule);
+      await container.registerModules(entrypoint, TestModule, config);
 
-      container.finalize(entrypoint).catchError(
+      container.finalize(entrypoint, config).catchError(
           (value) => expect(value.runtimeType, InitializationError));
     });
 
@@ -96,7 +98,7 @@ void main() async {
         '''when the function 'getModuleByToken' is called with a token that does not exist,
           then it should throw an $ArgumentError
         ''', () async {
-      final container = ModulesContainer(config);
+      final container = ModulesContainer();
 
       expect(() => container.getModuleByToken('test'),
           throwsA(isA<ArgumentError>()));
@@ -106,7 +108,7 @@ void main() async {
         '''when the function 'getParents' is called with a module that has no parents,
           then it should return an empty list
         ''', () async {
-      final container = ModulesContainer(config);
+      final container = ModulesContainer();
 
       final module = TestModule();
       final parents = container.getParents(module);
@@ -118,13 +120,13 @@ void main() async {
         '''when the function 'getParents' is called with a module that has parents,
           then it should return a list with the parents
         ''', () async {
-      final container = ModulesContainer(config);
+      final container = ModulesContainer();
       final subModule = TestSubModule();
       final module = TestModule(imports: [subModule]);
 
-      await container.registerModules(module, TestModule);
+      await container.registerModules(module, TestModule, config);
 
-      await container.finalize(module);
+      await container.finalize(module, config);
 
       final parents = container.getParents(subModule);
 
@@ -135,14 +137,14 @@ void main() async {
         '''when a $DeferredModule is registered in the application through a $Module,
           then it should be initialized after the 'eager' modules
         ''', () async {
-      final container = ModulesContainer(config);
+      final container = ModulesContainer();
       final subModule = TestSubModule();
       final module = TestModule(
           imports: [DeferredModule((context) async => subModule, inject: [])]);
 
-      await container.registerModules(module, TestModule);
+      await container.registerModules(module, TestModule, config);
 
-      await container.finalize(module);
+      await container.finalize(module, config);
 
       final parents = container.getParents(subModule);
 

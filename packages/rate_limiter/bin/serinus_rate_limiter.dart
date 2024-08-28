@@ -14,7 +14,7 @@ class MainModule extends Module {
 }
 
 void main() async {
-  final app = await serinus.createApplication(entrypoint: MainModule());
+  final app = (await serinus.createApplication(entrypoint: MainModule())) as SerinusApplication;
   app.use(RateLimiterHook(maxRequests: 10, duration: Duration(seconds: 10)));
   await app.serve();
 }

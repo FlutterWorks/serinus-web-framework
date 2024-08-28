@@ -15,7 +15,7 @@ final class SerinusFactory {
   /// It takes an [entrypoint] module, a [host] string, a [port] integer, a [loggingLevel] LogLevel, a [loggerService] LoggerService, a [poweredByHeader] string, a [securityContext] SecurityContext, and an [enableCompression] boolean.
   ///
   /// It returns a [Future] of [SerinusApplication].
-  Future<SerinusApplication> createApplication(
+  Future<Application> createApplication(
       {required Module entrypoint,
       String host = 'localhost',
       int port = 3000,
@@ -23,27 +23,41 @@ final class SerinusFactory {
       LoggerService? loggerService,
       String poweredByHeader = 'Powered by Serinus',
       SecurityContext? securityContext,
-      bool enableCompression = true}) async {
+      bool enableCompression = true,
+      int instances = 1}) async {
+    if (instances == 0) {
+      throw ArgumentError('The number of instances cannot be 0');
+    }
     final serverPort = int.tryParse(Platform.environment['PORT'] ?? '') ?? port;
     final serverHost = Platform.environment['HOST'] ?? host;
     final server = SerinusHttpAdapter(
+      host: serverHost,
+      port: serverPort,
+      poweredByHeader: poweredByHeader,
+      securityContext: securityContext,
+      enableCompression: enableCompression,
+    );
+    await server.init();
+    final config = ApplicationConfig(
         host: serverHost,
         port: serverPort,
         poweredByHeader: poweredByHeader,
         securityContext: securityContext,
-        enableCompression: enableCompression);
-    await server.init();
-    final app = SerinusApplication(
-        entrypoint: entrypoint,
-        config: ApplicationConfig(
-            host: serverHost,
-            port: serverPort,
-            poweredByHeader: poweredByHeader,
-            securityContext: securityContext,
-            serverAdapter: server),
-        level: loggingLevel,
-        loggerService: loggerService);
-    return app;
+        serverAdapter: server);
+    if (instances > 1) {
+      return OrchestratorApplication(
+          entrypoint: entrypoint,
+          config: config,
+          instances: instances,
+          level: LogLevel.none,
+          loggerService: loggerService);
+    } else {
+      return SerinusApplication(
+          entrypoint: entrypoint,
+          config: config,
+          level: loggingLevel,
+          loggerService: loggerService);
+    }
   }
 }
 

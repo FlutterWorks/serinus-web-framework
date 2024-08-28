@@ -91,10 +91,10 @@ void main() async {
     SerinusApplication? app;
     final controller = TestController();
     setUpAll(() async {
-      app = await serinus.createApplication(
+      app = (await serinus.createApplication(
           entrypoint: TestModule(controllers: [controller]),
           port: 3015,
-          loggingLevel: LogLevel.none);
+          loggingLevel: LogLevel.none)) as SerinusApplication;
       await app?.serve();
     });
     tearDownAll(() async {

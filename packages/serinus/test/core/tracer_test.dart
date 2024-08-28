@@ -105,11 +105,11 @@ void main() {
     final controller = TestController();
     final middleware = TestMiddleware();
     setUpAll(() async {
-      app = await serinus.createApplication(
+      app = (await serinus.createApplication(
           entrypoint:
               TestModule(controllers: [controller], middlewares: [middleware]),
           port: 4000,
-          loggingLevel: LogLevel.none);
+          loggingLevel: LogLevel.none)) as SerinusApplication;
       app?.trace(ServerTimingTracer());
       await app?.serve();
     });
