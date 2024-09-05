@@ -7,7 +7,7 @@ import 'base_context.dart';
 /// The [RequestContext] class is used to create the request context.
 final class RequestContext extends BaseContext {
   /// The [request] property contains the request of the context.
-  final Request request;
+  final IncomingMessage request;
 
   /// The [body] property contains the body of the context.
   Body get body => request.body ?? Body.empty();
@@ -33,10 +33,14 @@ final class RequestContext extends BaseContext {
   Map<String, dynamic> get query => request.query;
 
   /// The constructor of the [RequestContext] class.
-  RequestContext(super.providers, this.request, this._streamable);
+  RequestContext(super.providers, this.request);
 
   /// The [streamable] property contains the streamable response of the request.
-  final StreamableResponse _streamable;
+  late final StreamableResponse? _streamable;
+
+  set streamable(InternalResponse response) {
+    _streamable = StreamableResponse(response);
+  }
 
   /// The [metadata] property contains the metadata of the request context.
   ///
@@ -71,7 +75,10 @@ final class RequestContext extends BaseContext {
 
   /// The [stream] method is used to stream data to the response.
   StreamableResponse stream() {
-    return _streamable..init();
+    if(_streamable == null) {
+      throw StateError('Streamable response not initialized');
+    }
+    return _streamable!..init();
   }
 }
 

@@ -86,7 +86,7 @@ class TracersService {
     required String traced,
     bool begin = false,
     RequestContext? context,
-    Request? request,
+    IncomingMessage? request,
   }) {
     if (_tracers.isEmpty) {
       return;
@@ -106,7 +106,7 @@ class TracersService {
     required TraceEvents name,
     required String traced,
     RequestContext? context,
-    Request? request,
+    IncomingMessage? request,
   }) async {
     if (_tracers.isEmpty) {
       return;
@@ -131,7 +131,7 @@ class TracersService {
 }
 
 class _TracerProperties {
-  final Request request;
+  final IncomingMessage request;
 
   final Stopwatch stopwatch;
 

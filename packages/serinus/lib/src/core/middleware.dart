@@ -66,7 +66,7 @@ class _ShelfMiddleware extends Middleware {
   }
 
   Future<void> _responseFromShelf(
-      Request req, InternalResponse res, shelf.Response response) async {
+      IncomingMessage req, InternalResponse res, shelf.Response response) async {
     Map<String, String> headers = {
       for (var key in response.headers.keys)
         key: response.headers[key].toString()

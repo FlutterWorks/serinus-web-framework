@@ -46,7 +46,7 @@ class TraceEvent {
   final RequestContext? context;
 
   /// The Request of the event.
-  final Request? request;
+  final IncomingMessage? request;
 
   /// The timestamp of the event.
   final DateTime timestamp;

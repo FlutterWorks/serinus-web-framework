@@ -4,10 +4,66 @@ import '../extensions/content_type_extensions.dart';
 import '../extensions/string_extensions.dart';
 import 'http.dart';
 
+/// The class [IncomingMessage] is used to create a request object without using the [InternalRequest] object.
+abstract class IncomingMessage {
+
+  /// The id of the request.
+  String get id;
+
+  /// The path of the request.
+  String get path;
+
+  /// The uri of the request.
+  Uri get uri;
+
+  /// The method of the request.
+  String get method;
+
+  /// The headers of the request.
+  Map<String, dynamic> get headers;
+
+  /// The query parameters of the request.
+  Map<String, dynamic> get query;
+
+  /// The session of the request.
+  Session get session;
+
+  /// The client of the request.
+  HttpConnectionInfo? get clientInfo;
+
+  /// The params of the request.
+  Map<String, dynamic> get params;
+
+  /// The content type of the request.
+  ContentType get contentType;
+
+  /// The body of the request.
+  Body? get body;
+
+  /// The content length of the request.
+  int get contentLength;
+
+  /// This method is used to parse the body of the request.
+  Future<void> parseBody();
+
+  /// This method is used to add data to the request.
+  void addData(String key, dynamic value);
+
+  /// This method is used to get data from the request.
+  dynamic getData(String key);
+
+  /// The operator [] is used to get data from the request.
+  dynamic operator [](String key);
+
+  /// The operator []= is used to set data to the request.
+  void operator []=(String key, dynamic value);
+
+}
+
 /// The class [Request] is used to create a request object.
 ///
 /// It is a wrapper around the [InternalRequest] object.
-class Request {
+class Request extends IncomingMessage {
   /// The original [InternalRequest] object.
   final InternalRequest _original;
 
@@ -44,33 +100,43 @@ class Request {
   final Map<String, dynamic> _queryParamters = {};
 
   /// The id of the request.
+  @override
   String get id => _original.id;
 
   /// The path of the request.
+  @override
   String get path => _original.path;
 
   /// The uri of the request.
+  @override
   Uri get uri => _original.uri;
 
   /// The method of the request.
+  @override
   String get method => _original.method;
 
   /// The headers of the request.
+  @override
   Map<String, dynamic> get headers => _original.headers;
 
   /// The query parameters of the request.
+  @override
   Map<String, dynamic> get query => _queryParamters;
 
   /// The session of the request.
+  @override
   Session get session => _original.session;
 
   /// The client of the request.
+  @override
   HttpConnectionInfo? get clientInfo => _original.clientInfo;
 
   /// The params of the request.
+  @override
   Map<String, dynamic> get params => _params;
 
   /// The content type of the request.
+  @override
   ContentType get contentType => _original.contentType;
 
   /// The params of the request.
@@ -79,17 +145,21 @@ class Request {
   final Map<String, dynamic> _data = {};
 
   /// The operator [] is used to get data from the request.
+  @override
   dynamic operator [](String key) => _data[key];
 
   /// The operator []= is used to set data to the request.
+  @override
   void operator []=(String key, dynamic value) {
     _data[key] = value;
   }
 
   /// The body of the request.
+  @override
   Body? body;
 
   /// The content type of the request.
+  @override
   int get contentLength => _original.contentLength > -1
       ? _original.contentLength
       : body?.length ?? 0;
@@ -97,6 +167,7 @@ class Request {
   /// This method is used to parse the body of the request.
   ///
   /// It will try to parse the body of the request to the correct type.
+  @override
   Future<void> parseBody() async {
     /// If the body is already parsed, it will return.
     if (body != null) {
@@ -150,6 +221,7 @@ class Request {
   /// This method is used to add data to the request.
   ///
   /// Helper function to pass information between [Hook]s and [Route]s.
+  @override
   void addData(String key, dynamic value) {
     _data[key] = value;
   }
@@ -157,6 +229,7 @@ class Request {
   /// This method is used to get data from the request.
   ///
   /// Helper function to pass information between [Hook]s and [Route]s.
+  @override
   dynamic getData(String key) {
     return _data[key];
   }

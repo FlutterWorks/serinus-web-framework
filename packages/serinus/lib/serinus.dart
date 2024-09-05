@@ -11,6 +11,7 @@ export 'src/exceptions/exceptions.dart';
 export 'src/extensions/content_type_extensions.dart';
 export 'src/extensions/iterable_extansions.dart';
 export 'src/global_prefix.dart';
+export 'src/handlers/handler.dart';
 export 'src/hooks/body_size_limit_hook.dart';
 export 'src/http/http.dart';
 export 'src/mixins/mixins.dart';

@@ -50,14 +50,10 @@ abstract class Handler {
 
   /// Build the request context from the request and body
   RequestContext buildRequestContext(Iterable<Provider> providers,
-      Request request, InternalResponse response) {
+      IncomingMessage request) {
     return RequestContext(
-      {
-        for (final provider in providers)
-          provider.runtimeType: provider
-      },
-      request,
-      StreamableResponse(response),
+      {for (final provider in providers) provider.runtimeType: provider},
+      request
     );
   }
 }
